@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("ToyBox.Api")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+d71aea968bb75010b711502a8cb7c4292d6a6ab0")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+a8e2cfb09773e5c2b9243e2a851a1895825436f0")]
 [assembly: System.Reflection.AssemblyProductAttribute("ToyBox.Api")]
 [assembly: System.Reflection.AssemblyTitleAttribute("ToyBox.Api")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
