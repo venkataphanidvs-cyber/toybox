@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import './App.css'
 
 function ProductDetailsControls({ product, onAdd }) {
@@ -21,56 +21,14 @@ function ProductDetailsControls({ product, onAdd }) {
   )
 }
 
-const products = [
-  {
-    id: 1,
-    name: 'Turbo Racing Car',
-    category: 'Cars',
-    description: 'Remote controlled',
-    originalPrice: 1199,
-    discount: 25,
-    rating: 4.7,
-    age: '6+',
-    emoji: '🏎️',
-    color: 'blue'
-  },
-  {
-    id: 2,
-    name: 'Dinosaur Explorer',
-    category: 'Figures',
-    description: 'Adventure set',
-    originalPrice: 1899,
-    discount: 21,
-    rating: 4.8,
-    age: '5+',
-    emoji: '🦖',
-    color: 'green'
-  },
-  {
-    id: 3,
-    name: 'Build Your Robot',
-    category: 'STEM',
-    description: 'STEM kit',
-    originalPrice: 2999,
-    discount: 23,
-    rating: 4.9,
-    age: '8+',
-    emoji: '🤖',
-    color: 'purple'
-  },
-  {
-    id: 4,
-    name: 'World Explorer Puzzle',
-    category: 'Puzzles',
-    description: '500 pieces',
-    originalPrice: 899,
-    discount: 22,
-    rating: 4.6,
-    age: '8+',
-    emoji: '🧩',
-    color: 'pink'
-  }
-]
+const PRODUCT_META = {
+  1: { originalPrice: 1199, discount: 25, emoji: '🏎️', color: 'blue' },
+  2: { originalPrice: 1899, discount: 21, emoji: '🦖', color: 'green' },
+  3: { originalPrice: 2999, discount: 23, emoji: '🤖', color: 'purple' },
+  4: { originalPrice: 899, discount: 22, emoji: '🧩', color: 'pink' }
+}
+
+const API_URL = 'http://localhost:5081/api/products'
 
 const categoriesList = [
   'All',
@@ -85,9 +43,56 @@ const categoriesList = [
 function App() {
   const [search, setSearch] = useState('')
   const [category, setCategory] = useState('All')
+  const [products, setProducts] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
   const [cart, setCart] = useState([]) // {id, quantity}
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [wishlist, setWishlist] = useState(new Set())
+
+  useEffect(() => {
+    let isMounted = true
+
+    const loadProducts = async () => {
+      try {
+        setLoading(true)
+        setError('')
+
+        const response = await fetch(API_URL)
+
+        if (!response.ok) {
+          throw new Error('Unable to load products')
+        }
+
+        const data = await response.json()
+
+        if (!isMounted) return
+
+        const normalizedProducts = data.map((product) => ({
+          ...product,
+          ...PRODUCT_META[product.id],
+          price: product.price,
+          description: product.description
+        }))
+
+        setProducts(normalizedProducts)
+      } catch (fetchError) {
+        if (!isMounted) return
+        setError('Unable to load toys right now. Please try again later.')
+        setProducts([])
+      } finally {
+        if (isMounted) {
+          setLoading(false)
+        }
+      }
+    }
+
+    loadProducts()
+
+    return () => {
+      isMounted = false
+    }
+  }, [])
 
   const filteredProducts = products.filter((product) => {
     const matchesSearch =
@@ -202,7 +207,7 @@ function App() {
 
           {cart.map((item) => {
             const prod = products.find((p) => p.id === item.id)
-            const current = Math.round(prod.originalPrice * (1 - prod.discount / 100))
+            const current = prod.price ?? Math.round(prod.originalPrice * (1 - prod.discount / 100))
 
             return (
               <div className="cart-item" key={item.id}>
@@ -234,7 +239,7 @@ function App() {
             <strong>
               ₹{cart.reduce((sum, it) => {
                 const p = products.find((pp) => pp.id === it.id)
-                const price = Math.round(p.originalPrice * (1 - p.discount / 100))
+                const price = p.price ?? Math.round(p.originalPrice * (1 - p.discount / 100))
                 return sum + price * it.quantity
               }, 0).toLocaleString('en-IN')}
             </strong>
@@ -311,20 +316,24 @@ function App() {
 
         </div>
 
-        <div className="products">
-          {filteredProducts.map((product) => {
-            const currentPrice = Math.round(
-              product.originalPrice * (1 - product.discount / 100)
-            )
+        {loading && <p className="loading-message">Loading toys...</p>}
+        {error && <p className="error-message">{error}</p>}
 
-            const wished = wishlist.has(product.id)
+        {!loading && !error && (
+          <div className="products">
+            {filteredProducts.map((product) => {
+              const currentPrice = product.price ?? Math.round(
+                product.originalPrice * (1 - product.discount / 100)
+              )
 
-            return (
-              <div
-                className="product"
-                key={product.id}
-                onClick={() => setSelectedProduct(product)}
-              >
+              const wished = wishlist.has(product.id)
+
+              return (
+                <div
+                  className="product"
+                  key={product.id}
+                  onClick={() => setSelectedProduct(product)}
+                >
 
                 <div className={`product-image ${product.color}`}>
                   <div className="discount-badge">-{product.discount}%</div>
@@ -359,23 +368,24 @@ function App() {
                   <strong className="current">₹{currentPrice.toLocaleString('en-IN')}</strong>
                 </div>
 
-                <button
-                  className="add-cart"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    addToCart(product)
-                  }}
-                >
-                  Add to Cart
-                </button>
+                  <button
+                    className="add-cart"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      addToCart(product)
+                    }}
+                  >
+                    Add to Cart
+                  </button>
 
-              </div>
-            )
-          })}
-        </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
 
         {/* Product Details View */}
-        {selectedProduct && (
+        {!loading && !error && selectedProduct && (
           <section className="section product-details">
             <button className="back-btn" onClick={() => setSelectedProduct(null)}>← Back to Toys</button>
 
@@ -396,7 +406,7 @@ function App() {
 
                 <div className="price-row">
                   <span className="original">₹{selectedProduct.originalPrice.toLocaleString('en-IN')}</span>
-                  <strong className="current">₹{Math.round(selectedProduct.originalPrice * (1 - selectedProduct.discount/100)).toLocaleString('en-IN')}</strong>
+                  <strong className="current">₹{(selectedProduct.price ?? Math.round(selectedProduct.originalPrice * (1 - selectedProduct.discount / 100))).toLocaleString('en-IN')}</strong>
                   <span className="discount">({selectedProduct.discount}% off)</span>
                 </div>
 
